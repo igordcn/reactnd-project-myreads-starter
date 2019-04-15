@@ -18,6 +18,17 @@ class SearchBooks extends Component{
   }
 
   /**
+   * Método chamado logo após a inicialização do
+   * componente. 
+   */
+  componentDidMount(){
+    // Pega o valor atualizado do state books
+    // Caso se inicie a aplicação por esse componente
+    // essa ação é necessária.
+    this.props.init();
+  }
+
+  /**
    * Modifica o estado do componente
    * (especificamente a string de consulta)
    * e realiza a consulta com a nova string.

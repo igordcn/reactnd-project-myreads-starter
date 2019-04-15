@@ -11,28 +11,24 @@ import * as BooksAPI from './BooksAPI';
 class BooksApp extends Component {
 
   /**
-   * Estado do componente. Contém todos
-   * os livros presentes na aplicação.
+   * Estado do componente. Contém uma lista
+   * dos livros que tem estante e uma lista
+   * específica para busca.
    */
   state = {
-    /**
-     * TODO: Instead of using this state variable to keep track of which page
-     * we're on, use the URL in the browser's address bar. This will ensure that
-     * users can use the browser's back and forward buttons to navigate between
-     * pages, as well as provide a good URL they can bookmark and share.
-     */
-    books: []
+    books: [],
+    booksSearch: []
   }
 
   /**
    * Busca todos os livros da API.
    */
   getAllBooks = () => {
-    // Busca por todos os livros na API
-    BooksAPI.getAll().then(books => 
+    // Busca por todos os livros que tem estante na API
+    BooksAPI.getAll().then(books => {
       // Atualiza o estado
       this.setState({books:books})
-    )
+    })
   }
 
   /**
@@ -43,15 +39,27 @@ class BooksApp extends Component {
    */
   searchBooks = (query) => {
     // Busca na API livros que correspondem a query.
-    BooksAPI.search(query).then(books => {
+    BooksAPI.search(query).then(booksFromAPI => {
+      console.log(booksFromAPI)
       // Verifica se houve erro na consulta
-      if(books.error){
+      if(booksFromAPI.error){
         // Se houver, esvazia a lista de livros
-        this.setState({books:[]})
+        this.setState({booksSearch:[]})
       }else{
-        // Senão, atualiza o estado com os livros
-        // correspondentes.
-        this.setState({books:books})
+        // A API no método de busca não devolve a estante
+        // do livro. Por isso é preciso verificar e atualizar
+        // o valor de shelf caso um livro pertença a uma estante.
+        const booksState = this.state.books;
+        let bookInstance;
+        for(let i = 0; i < booksFromAPI.length; i++){
+          // Encontra um instância de livro que possua um id correspondente.
+          bookInstance = booksState.filter(book => booksFromAPI[i].id === book.id)[0]
+          // Verifica se não é undefined e atualiza o valor do shelf.
+          if(bookInstance)
+            booksFromAPI[i].shelf = bookInstance.shelf
+        }
+        // Atualiza o estado do componente.
+        this.setState({booksSearch:booksFromAPI})
       }
     })
   }
@@ -68,10 +76,27 @@ class BooksApp extends Component {
       const index = this.state.books.indexOf(book);
       // Realiza uma cópia dos livros do estado atual.
       let books = this.state.books.slice(0);
-      // Atualiza o valor da prateleira do livro.
-      books[index].shelf = shelf;
-      // Atualiza o estado do livro.
-      this.setState({books:books});
+      let booksSearch = this.state.booksSearch.slice(0);
+      // Há duas situações: o livro foi atualizado na página
+      // de busca ou na de estantes
+      // Se o livro não foi encontrado na lista de livros de
+      // estante, quer dizer que foi atualizado na página de
+      // busca. Caso contrário na de estantes.
+      if(index === -1){
+        // O livro é adicionado aos livros de estante caso o
+        // valor não seja None
+        if(shelf !== 'None')
+          books.push(book);
+        // Atualiza o valor do shelf
+        const index2 = booksSearch.indexOf(book);
+        booksSearch[index2].shelf = shelf;
+        // Atualiza os estados das listas de livros.
+        this.setState({books:books, booksSearch:booksSearch});
+      }else{
+        // Atualiza o valor da prateleira do livro.
+        books[index].shelf = shelf;
+        this.setState({books:books});
+      }
     })
   }
 
@@ -88,7 +113,7 @@ class BooksApp extends Component {
            */
         }
         <Route exact path="/search" render={() =>(
-          <SearchBooks books={this.state.books} update={this.updateBookShelf} search={this.searchBooks}/>
+          <SearchBooks init={this.getAllBooks} books={this.state.booksSearch} update={this.updateBookShelf} search={this.searchBooks}/>
         )}/>
         {
           /**
